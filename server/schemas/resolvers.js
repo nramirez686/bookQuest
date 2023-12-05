@@ -1,3 +1,6 @@
+const { User, Book } = require("../models");
+const { signToken, AuthenticationError } = require("../utils/auth");
+
 const resolvers = {
   Query: {
     me: async (_, __, { user }) => {
@@ -8,25 +11,29 @@ const resolvers = {
     },
   },
   Mutation: {
-    login: async (_, { email, password }) => {
+    addUser: async (parent, { username, email, password }) => {
+      const newUser = await User.create({
+        username,
+        email,
+        password,
+      });
+      return newUser;
+    },
+    loginUser: async (parent, { email, password }) => {
       const user = await User.findOne({ email });
 
-      if (!user || !(await user.isCorrectPassword(password))) {
-        throw new AuthenticationError("Invalid credentials");
+      if (!user) {
+        throw AuthenticationError;
+      }
+
+      const correctPw = await user.isCorrectPassword(password);
+
+      if (!correctPw) {
+        throw AuthenticationError;
       }
 
       const token = signToken(user);
-      return { token, user };
-    },
-    addUser: async (_, { username, email, password }) => {
-      // Hash the password before storing it
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({
-        username,
-        email,
-        password: hashedPassword,
-      });
-      const token = signToken(user);
+
       return { token, user };
     },
     saveBook: async (_, { bookInput }, { user }) => {
